@@ -155,12 +155,17 @@ def extract_icon_color(box, name):
     pad = 5
     crop = _IA[y - pad:y + h + pad, x - pad:x + w + pad].copy()
     # 地色はアイコンの左右（カード内側）から採る
-    cy = y + h // 2
-    ring = [_IA[cy, x + dx] for dx in (-22, -18, w + 17, w + 21)
-            if 0 <= x + dx < _IA.shape[1]]
-    BG = np.median(np.array(ring), axis=0)
+    # 地色はアイコン上辺と左側から採り、文字を拾わないよう明るい画素だけの中央値にする
+    ring = [_IA[yy, xx] for yy in range(max(0, y - 14), max(1, y - 7))
+            for xx in range(x - 6, x + w + 6) if 0 <= xx < _IA.shape[1]]
+    ring += [_IA[yy, x + dx] for yy in range(y, y + h)
+             for dx in (-20, -16) if 0 <= x + dx < _IA.shape[1]]
+    ring = np.array(ring)
+    light = ring[ring.mean(axis=1) > 200]
+    BG = np.median(light if len(light) > 20 else ring, axis=0)
     alpha = 1.0 - (crop / np.maximum(BG, 1)).min(axis=2)
-    alpha = np.clip(alpha, 0, 1)
+    # 地色推定の誤差でうっすら四角が残るのを防ぐ
+    alpha = np.clip((alpha - 0.10) / 0.90, 0, 1)
     a3 = np.maximum(alpha, 1e-6)[:, :, None]
     C = np.clip((crop - BG * (1 - a3)) / a3, 0, 255)
     rgba = np.zeros(crop.shape[:2] + (4,), np.uint8)
