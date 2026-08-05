@@ -306,6 +306,58 @@ for bc in BCARDS:
        % (bc['sakura_src'], sx0 - bc['x0'], sy0 - bc['top'], sx1 - sx0 + 1, sy1 - sy0 + 1))
     ad('</div>')
 
+# ---------------------------------------------------------------- アクセス・診療時間
+# 出典: https://jlc.tokyo/base/ikebukuro.html / https://jlc.tokyo/access_time.html
+CLINIC = dict(
+    name='ジャスミンレディースクリニック 池袋',
+    zip='〒170-0013',
+    addr='東京都豊島区東池袋1丁目2番2号 東池ビル 5階',
+    tel='03-5955-3804',
+    access='JR池袋駅東口・35番出口より徒歩1分',
+    q='ジャスミンレディースクリニック池袋',
+    hours=[['受付時間', '平日', '土・日・祝'],
+           ['午前', '11:00〜15:00', '10:00〜14:00'],
+           ['午後', '16:00〜20:00', '15:00〜17:00']],
+    closed='休診日：年中無休',
+)
+SEC_TOP = 3660           # 見出しバーの上端
+MAP_X, MAP_Y, MAP_W = 96, 3790, 900
+COL_X, COL_W = 1046, 780
+TITLE = 'アクセス・診療時間'
+
+ad('<div class="a bar" style="left:69px;top:%dpx;height:59px;background:#ee7b98"></div>' % SEC_TOP)
+# 他セクションと同じく「文字の中心」を渡す（左端112px 起点）
+ad('<div class="a sec-title" style="left:%dpx;top:%dpx;color:#e35c81">%s</div>'
+   % (112 + len(TITLE) * 46.3 / 2, SEC_TOP + 30, TITLE))
+
+y = MAP_Y
+ad('<div class="a acc-name" style="left:%dpx;top:%dpx;width:%dpx">%s</div>' % (COL_X, y, COL_W, esc(CLINIC['name'])))
+y += 76
+for label, value in [('住所', CLINIC['zip'] + '<br>' + esc(CLINIC['addr'])),
+                     ('電話番号', '<a href="tel:%s">%s</a>' % (CLINIC['tel'].replace('-', ''), CLINIC['tel'])),
+                     ('アクセス', esc(CLINIC['access']))]:
+    ad('<div class="a acc-rule" style="left:%dpx;top:%dpx;width:%dpx"></div>' % (COL_X, y, COL_W))
+    ad('<div class="a acc-label" style="left:%dpx;top:%dpx">%s</div>' % (COL_X, y + 26, label))
+    ad('<div class="a acc-val" style="left:%dpx;top:%dpx;width:%dpx">%s</div>' % (COL_X, y + 66, COL_W, value))
+    y += 66 + (86 if label == '住所' else 46) + 34
+ad('<div class="a acc-rule" style="left:%dpx;top:%dpx;width:%dpx"></div>' % (COL_X, y, COL_W))
+
+y += 46
+rows = ''.join('<tr>%s</tr>' % ''.join(
+    '<%s>%s</%s>' % ('th' if (ri == 0 or ci == 0) else 'td', esc(c), 'th' if (ri == 0 or ci == 0) else 'td')
+    for ci, c in enumerate(r)) for ri, r in enumerate(CLINIC['hours']))
+ad('<table class="a hours" style="left:%dpx;top:%dpx;width:%dpx">%s</table>' % (COL_X, y, COL_W, rows))
+ad('<div class="a acc-note" style="left:%dpx;top:%dpx">%s</div>' % (COL_X, y + 206, CLINIC['closed']))
+
+COL_BOTTOM = y + 206 + 34
+# 地図の高さは右カラムの下端に揃える
+ad('<div class="a acc-map" style="left:%dpx;top:%dpx;width:%dpx;height:%dpx">'
+   '<div class="map-fb">Googleマップ（表示にはネットワーク接続が必要です）</div>'
+   '<iframe src="https://maps.google.com/maps?q=%s&amp;z=17&amp;hl=ja&amp;output=embed" '
+   'title="%s の地図" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>'
+   % (MAP_X, MAP_Y, MAP_W, COL_BOTTOM - MAP_Y, CLINIC['q'], esc(CLINIC['name'])))
+PAGE_H = COL_BOTTOM + 96
+
 body = '\n'.join(html)
 
 CSS = """
@@ -317,7 +369,7 @@ CSS = """
 html{background:#fff}
 body{background:#fff;-webkit-font-smoothing:antialiased}
 #fit{width:100%;overflow:hidden}
-#stage{position:relative;width:1920px;height:3563px;background:#fdfafb;
+#stage{position:relative;width:1920px;height:__PH__px;background:#fdfafb;
   transform-origin:top left;font-family:var(--gothic);color:#333}
 .a{position:absolute}
 img.a{display:block;border:0}
@@ -351,6 +403,24 @@ img.a{display:block;border:0}
   letter-spacing:.04em;text-indent:.04em;color:#fff;white-space:nowrap;line-height:1}
 .photo{border-radius:4px;object-fit:cover}
 .body{font-size:27px;line-height:43.7px;letter-spacing:.04em;color:#3f3532;-webkit-text-stroke:.3px}
+
+/* アクセス・診療時間 */
+.acc-map{border:2px solid #f0dbe1;border-radius:9px;overflow:hidden;background:#f4f1ee}
+.acc-map iframe{position:relative;z-index:1;width:100%;height:100%;border:0;display:block}
+.map-fb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:24px;letter-spacing:.04em;color:#9c8f8b;text-align:center;padding:0 40px}
+.acc-name{font-family:var(--mincho);font-size:38px;letter-spacing:.05em;color:#3b2118;line-height:1.3}
+.acc-rule{height:1px;background:#ecdfe3}
+.acc-label{font-size:23px;font-weight:600;letter-spacing:.14em;color:#c4738c;line-height:1}
+.acc-val{font-size:28px;line-height:43px;letter-spacing:.04em;color:#3f3532}
+.acc-val a{color:#3f3532;text-decoration:none;border-bottom:1px solid #e6ccd4}
+.acc-val a:hover{color:#d4557a}
+.hours{border-collapse:collapse;font-size:26px;letter-spacing:.04em;
+  font-variant-numeric:tabular-nums;color:#3f3532}
+.hours th,.hours td{border:1px solid #eddfe3;height:66px;text-align:center;font-weight:400}
+.hours tr:first-child th{background:#fdf1f4;color:#c04c72;font-weight:600;letter-spacing:.1em}
+.hours tr:not(:first-child) th{background:#fbf7f8;width:200px}
+.acc-note{font-size:24px;letter-spacing:.04em;color:#6b5f5c}
 """
 
 doc = """<!doctype html>
@@ -369,7 +439,7 @@ doc = """<!doctype html>
 (function(){
   var fit=document.getElementById('fit'), st=document.getElementById('stage');
   function r(){var s=fit.clientWidth/1920; st.style.transform='scale('+s+')';
-    fit.style.height=Math.round(3563*s)+'px';}
+    fit.style.height=Math.round(__PH__*s)+'px';}
   r(); addEventListener('resize',r);
 })();
 </script>
@@ -384,6 +454,7 @@ for p in set(list(icons_meta) + [hero_p, bot_p] +
              [b['sakura_src'] for b in BCARDS] +
              [ic['src'] for r in ROWS for ic in r['icons']]):
     cache[p] = b64(p)
+doc = doc.replace('__PH__', str(PAGE_H))
 doc = doc.replace('{{hero}}', cache[hero_p])
 for p, d in cache.items():
     doc = doc.replace('{{%s}}' % p, d)
