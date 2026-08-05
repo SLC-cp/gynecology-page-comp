@@ -307,22 +307,32 @@ for bc in BCARDS:
     ad('</div>')
 
 # ---------------------------------------------------------------- アクセス・診療時間
-# 出典: https://jlc.tokyo/base/ikebukuro.html / https://jlc.tokyo/access_time.html
+# 出典: https://sakura-ikebukuro.com/ （2026-08-05 取得）／地図の埋め込みコードは施主支給
+MAP_SRC = ('https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3241.5!'
+           '2d139.69699527738007!3d35.68912741970208!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!'
+           '4f13.1!3m3!1m2!1s0x60188dec4a4e4c6b%3A0x3d7c4fc94b0f591b!'
+           '2z5rGg6KKL6aeF5YmN44GV44GP44KJ44Os44OH44Kj44O844K544Kv44Oq44OL44OD44KvTklDT'
+           '-ODrOODh-OCo-ODvOOCueearuOBteenkQ!5e0!3m2!1sja!2sjp!4v1785900964372!5m2!1sja!2sjp')
 CLINIC = dict(
-    name='ジャスミンレディースクリニック 池袋',
-    zip='〒170-0013',
-    addr='東京都豊島区東池袋1丁目2番2号 東池ビル 5階',
-    tel='03-5955-3804',
-    access='JR池袋駅東口・35番出口より徒歩1分',
-    q='ジャスミンレディースクリニック池袋',
-    hours=[['受付時間', '平日', '土・日・祝'],
-           ['午前', '11:00〜15:00', '10:00〜14:00'],
-           ['午後', '16:00〜20:00', '15:00〜17:00']],
-    closed='休診日：年中無休',
+    name='池袋駅前さくらレディースクリニック<br>NICOレディース皮ふ科',
+    addr='〒170-0013<br>東京都豊島区東池袋1丁目1-4 タカセセントラルビル 4階',
+    tel='03-5944-9105',
+    access='池袋駅東口から徒歩1分<br>35番出口から徒歩0分',
+    hours=[['曜日', '診療時間'],
+           ['月曜', '11:00〜14:00 ／ 15:00〜21:00'],
+           ['火曜', '11:00〜17:00 ／ 17:00〜21:00'],
+           ['水曜', '11:00〜15:00 ／ 17:00〜21:00'],
+           ['木曜', '11:00〜15:00 ／ 17:00〜21:00'],
+           ['金曜', '11:00〜15:00 ／ 17:00〜21:00'],
+           ['土・日・祝日', '10:00〜14:00 ／ 15:00〜18:00']],
+    notes=['※火曜日は休診時間なく診療しております。', '※いずれの時間帯も女性医師が担当します。'],
 )
-SEC_TOP = 3660           # 見出しバーの上端
-MAP_X, MAP_Y, MAP_W = 96, 3790, 900
-COL_X, COL_W = 1046, 780
+SEC_TOP = 3660                     # 見出しバーの上端
+CX, CW = 96, 1730                  # コンテンツ左端と幅
+MAP_Y, MAP_H = 3790, 620
+GAP = 70
+LCOL_W = 800                       # 左：医院情報
+RCOL_X = CX + CW - 830             # 右：診療時間
 TITLE = 'アクセス・診療時間'
 
 ad('<div class="a bar" style="left:69px;top:%dpx;height:59px;background:#ee7b98"></div>' % SEC_TOP)
@@ -330,33 +340,39 @@ ad('<div class="a bar" style="left:69px;top:%dpx;height:59px;background:#ee7b98"
 ad('<div class="a sec-title" style="left:%dpx;top:%dpx;color:#e35c81">%s</div>'
    % (112 + len(TITLE) * 46.3 / 2, SEC_TOP + 30, TITLE))
 
-y = MAP_Y
-ad('<div class="a acc-name" style="left:%dpx;top:%dpx;width:%dpx">%s</div>' % (COL_X, y, COL_W, esc(CLINIC['name'])))
-y += 76
-for label, value in [('住所', CLINIC['zip'] + '<br>' + esc(CLINIC['addr'])),
-                     ('電話番号', '<a href="tel:%s">%s</a>' % (CLINIC['tel'].replace('-', ''), CLINIC['tel'])),
-                     ('アクセス', esc(CLINIC['access']))]:
-    ad('<div class="a acc-rule" style="left:%dpx;top:%dpx;width:%dpx"></div>' % (COL_X, y, COL_W))
-    ad('<div class="a acc-label" style="left:%dpx;top:%dpx">%s</div>' % (COL_X, y + 26, label))
-    ad('<div class="a acc-val" style="left:%dpx;top:%dpx;width:%dpx">%s</div>' % (COL_X, y + 66, COL_W, value))
-    y += 66 + (86 if label == '住所' else 46) + 34
-ad('<div class="a acc-rule" style="left:%dpx;top:%dpx;width:%dpx"></div>' % (COL_X, y, COL_W))
+# 地図（上）
+ad('<div class="a acc-map" style="left:%dpx;top:%dpx;width:%dpx;height:%dpx">'
+   '<div class="map-fb">Googleマップ（表示にはネットワーク接続が必要です）</div>'
+   '<iframe src="%s" title="%s の地図" loading="lazy" allowfullscreen '
+   'referrerpolicy="strict-origin-when-cross-origin"></iframe></div>'
+   % (CX, MAP_Y, CW, MAP_H, MAP_SRC, '池袋駅前さくらレディースクリニック'))
 
-y += 46
+# 左カラム：医院名＋所在地・電話・アクセス
+y = MAP_Y + MAP_H + GAP
+ad('<div class="a acc-name" style="left:%dpx;top:%dpx;width:%dpx">%s</div>' % (CX, y, LCOL_W, CLINIC['name']))
+y += 112
+for label, value, lines in [('所在地', CLINIC['addr'], 2),
+                            ('電話番号', '<a href="tel:%s">%s</a>' % (CLINIC['tel'].replace('-', ''), CLINIC['tel']), 1),
+                            ('アクセス', CLINIC['access'], 2)]:
+    ad('<div class="a acc-rule" style="left:%dpx;top:%dpx;width:%dpx"></div>' % (CX, y, LCOL_W))
+    ad('<div class="a acc-label" style="left:%dpx;top:%dpx">%s</div>' % (CX, y + 26, label))
+    ad('<div class="a acc-val" style="left:%dpx;top:%dpx;width:%dpx">%s</div>' % (CX, y + 66, LCOL_W, value))
+    y += 66 + 43 * lines + 34
+ad('<div class="a acc-rule" style="left:%dpx;top:%dpx;width:%dpx"></div>' % (CX, y, LCOL_W))
+LEFT_BOTTOM = y
+
+# 右カラム：診療時間
+ty = MAP_Y + MAP_H + GAP
 rows = ''.join('<tr>%s</tr>' % ''.join(
     '<%s>%s</%s>' % ('th' if (ri == 0 or ci == 0) else 'td', esc(c), 'th' if (ri == 0 or ci == 0) else 'td')
     for ci, c in enumerate(r)) for ri, r in enumerate(CLINIC['hours']))
-ad('<table class="a hours" style="left:%dpx;top:%dpx;width:%dpx">%s</table>' % (COL_X, y, COL_W, rows))
-ad('<div class="a acc-note" style="left:%dpx;top:%dpx">%s</div>' % (COL_X, y + 206, CLINIC['closed']))
+ad('<table class="a hours" style="left:%dpx;top:%dpx;width:830px">%s</table>' % (RCOL_X, ty, rows))
+ny = ty + 66 * len(CLINIC['hours']) + 20
+for n in CLINIC['notes']:
+    ad('<div class="a acc-note" style="left:%dpx;top:%dpx">%s</div>' % (RCOL_X, ny, esc(n)))
+    ny += 38
 
-COL_BOTTOM = y + 206 + 34
-# 地図の高さは右カラムの下端に揃える
-ad('<div class="a acc-map" style="left:%dpx;top:%dpx;width:%dpx;height:%dpx">'
-   '<div class="map-fb">Googleマップ（表示にはネットワーク接続が必要です）</div>'
-   '<iframe src="https://maps.google.com/maps?q=%s&amp;z=17&amp;hl=ja&amp;output=embed" '
-   'title="%s の地図" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>'
-   % (MAP_X, MAP_Y, MAP_W, COL_BOTTOM - MAP_Y, CLINIC['q'], esc(CLINIC['name'])))
-PAGE_H = COL_BOTTOM + 96
+PAGE_H = max(LEFT_BOTTOM, ny) + 96
 
 body = '\n'.join(html)
 
@@ -409,7 +425,7 @@ img.a{display:block;border:0}
 .acc-map iframe{position:relative;z-index:1;width:100%;height:100%;border:0;display:block}
 .map-fb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   font-size:24px;letter-spacing:.04em;color:#9c8f8b;text-align:center;padding:0 40px}
-.acc-name{font-family:var(--mincho);font-size:38px;letter-spacing:.05em;color:#3b2118;line-height:1.3}
+.acc-name{font-family:var(--mincho);font-size:38px;letter-spacing:.05em;color:#3b2118;line-height:1.42}
 .acc-rule{height:1px;background:#ecdfe3}
 .acc-label{font-size:23px;font-weight:600;letter-spacing:.14em;color:#c4738c;line-height:1}
 .acc-val{font-size:28px;line-height:43px;letter-spacing:.04em;color:#3f3532}
@@ -419,8 +435,8 @@ img.a{display:block;border:0}
   font-variant-numeric:tabular-nums;color:#3f3532}
 .hours th,.hours td{border:1px solid #eddfe3;height:66px;text-align:center;font-weight:400}
 .hours tr:first-child th{background:#fdf1f4;color:#c04c72;font-weight:600;letter-spacing:.1em}
-.hours tr:not(:first-child) th{background:#fbf7f8;width:200px}
-.acc-note{font-size:24px;letter-spacing:.04em;color:#6b5f5c}
+.hours tr:not(:first-child) th{background:#fbf7f8;width:230px}
+.acc-note{font-size:24px;letter-spacing:.04em;color:#6b5f5c;line-height:1}
 """
 
 doc = """<!doctype html>
