@@ -58,6 +58,16 @@ def inpaint_h(arr, x0, y0, x1, y1):
     return arr
 
 
+def smooth_box(arr, x0, y0, x1, y1, r=9):
+    """インペイントした矩形をぼかして縦縞の跡を消す"""
+    from PIL import ImageFilter
+    m = 12
+    sub = Image.fromarray(np.clip(arr[y0 - m:y1 + m, x0 - m:x1 + m], 0, 255).astype(np.uint8))
+    sub = sub.filter(ImageFilter.GaussianBlur(r))
+    arr[y0:y1, x0:x1] = np.asarray(sub).astype(float)[m:-m, m:-m]
+    return arr
+
+
 def inpaint_v(arr, x0, y0, x1, y1):
     T = arr[y0 - 2:y0 - 1, x0:x1].astype(float)
     B = arr[y1 + 1:y1 + 2, x0:x1].astype(float)
@@ -258,6 +268,8 @@ for ri, r in enumerate(ROWS):
 hero = A[0:540, :, :].copy()
 inpaint_h(hero, 795, 60, 1128, 270)      # Gynecology + 婦人科
 inpaint_v(hero, 452, 282, 1468, 336)     # リード文
+smooth_box(hero, 795, 60, 1128, 270)
+smooth_box(hero, 452, 282, 1468, 336)
 hero_img = Image.fromarray(np.clip(hero, 0, 255).astype(np.uint8))
 hero_p = save_jpg(hero_img, 'hero.jpg', 94)
 

@@ -13,5 +13,5 @@ out = re.sub(r'<main.*?</main>', lambda m: main_new, live, flags=re.S)
 links = '\n'.join(css_links)
 out = out.replace('</head>', links + '\n</head>', 1)
 # 追加CSSをheadに（テンプレ側のlinkはmain内にあるのでそのまま効く）
-open(THEME + '/_preview.html', 'w', encoding='utf-8').write(out)
+open('/Users/hirano/gyn-page-comp/theme-preview/index.html', 'w', encoding='utf-8').write(out)
 print('preview written', len(out), 'bytes / css links in template:', len(css_links))
