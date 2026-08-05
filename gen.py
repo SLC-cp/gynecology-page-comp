@@ -126,6 +126,50 @@ DIVIDERS = [  # (中心y, 色)
     (2243, '#fbe4e4'), (2473, '#e4e8e3'), (2722, '#faebe4'),
 ]
 
+# --------------------------------------------------- 塗りアイコン（2枚目のカンプ）
+# IMG_4687.JPG から実測した各アイコンの外接矩形（x, y, w, h）。順序は ROWS のラベルと一致
+ICON_SRC = '/Users/hirano/Downloads/IMG_4687.JPG'
+ICON_SCALE = 1.860          # 2枚目カンプ→この版面 の倍率（カード間ピッチ実測より）
+ICON_BOXES = [
+    [(116, 76, 73, 70), (302, 76, 81, 70), (498, 80, 64, 59), (686, 80, 60, 59), (880, 82, 59, 63)],
+    [(128, 266, 47, 50), (326, 266, 33, 50), (504, 268, 52, 47), (680, 266, 72, 50), (890, 266, 34, 50)],
+    [(116, 374, 68, 58), (307, 370, 69, 53), (490, 378, 79, 54)],
+    [(124, 546, 54, 49), (318, 552, 46, 40), (502, 546, 54, 50), (688, 546, 56, 48), (882, 545, 42, 51)],
+    [(128, 698, 46, 46), (312, 699, 53, 46), (518, 698, 22, 47), (694, 698, 40, 48), (880, 700, 48, 46)],
+    [(128, 792, 47, 46), (314, 792, 51, 44), (506, 796, 44, 40), (687, 792, 57, 42), (876, 794, 55, 38)],
+    [(94, 936, 34, 42), (276, 938, 40, 36)],
+    [(102, 1040, 29, 38), (300, 1040, 49, 38), (565, 1044, 33, 29), (788, 1044, 36, 30)],
+    [(92, 1141, 40, 41), (314, 1144, 52, 38), (556, 1146, 42, 30)],
+]
+# 行ごとのカード地色（2枚目カンプ実測）
+CARD_FILL = ['#fdf9f8', '#fcf7fb', '#fcf7fb', '#fbfbf6', '#faf9fe', '#faf9fe',
+             '#fdf8f2', '#f4f8f6', '#fcf8f4']
+
+_icon_im = Image.open(ICON_SRC).convert('RGB')
+_IA = np.asarray(_icon_im).astype(float)
+
+
+def extract_icon_color(box, name):
+    """カード地色を背景としてアルファを起こし、RGBA で切り出す"""
+    x, y, w, h = box
+    pad = 5
+    crop = _IA[y - pad:y + h + pad, x - pad:x + w + pad].copy()
+    # 地色はアイコンの左右（カード内側）から採る
+    cy = y + h // 2
+    ring = [_IA[cy, x + dx] for dx in (-22, -18, w + 17, w + 21)
+            if 0 <= x + dx < _IA.shape[1]]
+    BG = np.median(np.array(ring), axis=0)
+    alpha = 1.0 - (crop / np.maximum(BG, 1)).min(axis=2)
+    alpha = np.clip(alpha, 0, 1)
+    a3 = np.maximum(alpha, 1e-6)[:, :, None]
+    C = np.clip((crop - BG * (1 - a3)) / a3, 0, 255)
+    rgba = np.zeros(crop.shape[:2] + (4,), np.uint8)
+    rgba[:, :, :3] = C.round().astype(np.uint8)
+    rgba[:, :, 3] = (alpha * 255).round().astype(np.uint8)
+    p = save_png(rgba, name)
+    return dict(src=p, w=crop.shape[1], h=crop.shape[0])
+
+
 # ---------------------------------------------------------------- アイコン抽出
 def extract_icon(x0, y0, x1, y1, name):
     pad = 3
@@ -177,22 +221,33 @@ def card_parts(t, b, x0, x1):
     text = (sat2 <= 40) & (tot2 < 640)
     tb = bbox(text, tx0, ty0)
     lines = [(ty0 + s, ty0 + e) for s, e in runs(text.any(axis=1), 4)]
-    return ib, tb, lines
+    return ib, tb, lines, horiz
 
 
 # ---------------------------------------------------------------- 実行
 parts_html = []
 icons_meta = []
 
-for r in ROWS:
+for ri, r in enumerate(ROWS):
     t, b = r['top'], r['bot']
     r['icons'], r['label_pos'] = [], []
     for i, (x0, x1) in enumerate(r['cards']):
-        ib, tb, lines = card_parts(t, b, x0, x1)
-        meta = extract_icon(*ib, name='ic_%s_%d.png' % (r['id'], i))
-        r['icons'].append(meta)
+        ib, tb, lines, horiz = card_parts(t, b, x0, x1)
         r['label_pos'].append(dict(cx=(tb[0] + tb[2]) / 2, cy=(tb[1] + tb[3]) / 2,
                                    h=tb[3] - tb[1], w=tb[2] - tb[0], lines=lines))
+        # 塗りアイコンを、元の線アイコンがあった余白に収める
+        nb = ICON_BOXES[ri][i]
+        meta = extract_icon_color(nb, 'ic_%s_%d.png' % (r['id'], i))
+        aspect = meta['w'] / meta['h']
+        if horiz:                       # アイコン左・ラベル右のカード
+            hh = min(meta['h'] * ICON_SCALE, (b - t) * 0.78)
+            cx, cy = (ib[0] + ib[2]) / 2, (ib[1] + ib[3]) / 2
+        else:                           # アイコン上・ラベル下のカード
+            space = tb[1] - t           # カード上端からラベル上端まで
+            hh = min(meta['h'] * ICON_SCALE, space * 0.90)
+            cx, cy = (x0 + x1) / 2, t + space / 2
+        ww = hh * aspect
+        r['icons'].append(dict(src=meta['src'], x=cx - ww / 2, y=cy - hh / 2, w=ww, h=hh))
 
 # ヘッダー（文字をインペイントして背景画に）
 hero = A[0:540, :, :].copy()
@@ -266,10 +321,11 @@ for s in SECTIONS:
 for r in ROWS:
     t, b = r['top'], r['bot']
     for i, (x0, x1) in enumerate(r['cards']):
-        ad('<div class="a card" style="left:%dpx;top:%dpx;width:%dpx;height:%dpx;border-color:%s"></div>'
-           % (x0, t, x1 - x0 + 1, b - t + 1, r['border']))
+        ad('<div class="a card" style="left:%dpx;top:%dpx;width:%dpx;height:%dpx;'
+           'border-color:%s;background:%s"></div>'
+           % (x0, t, x1 - x0 + 1, b - t + 1, r['border'], CARD_FILL[ROWS.index(r)]))
         ic = r['icons'][i]
-        ad('<img class="a" src="{{%s}}" style="left:%dpx;top:%dpx;width:%dpx;height:%dpx">'
+        ad('<img class="a" src="{{%s}}" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;height:%.1fpx">'
            % (ic['src'], ic['x'], ic['y'], ic['w'], ic['h']))
         lp = r['label_pos'][i]
         label = r['labels'][i]
@@ -404,7 +460,7 @@ img.a{display:block;border:0}
   font-weight:400;-webkit-text-stroke:.3px;letter-spacing:.03em;text-indent:.03em;white-space:nowrap;line-height:1}
 
 /* カード */
-.card{border:2px solid;border-radius:9px;background:#fffdfe}
+.card{border:2px solid;border-radius:9px}
 .label{transform:translate(-50%,-50%);font-size:26px;font-weight:500;-webkit-text-stroke:.4px;letter-spacing:.05em;
   text-indent:.05em;white-space:nowrap;line-height:1;color:#454343}
 .label.ml{text-align:center}
